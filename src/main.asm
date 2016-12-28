@@ -10,7 +10,7 @@ mRepeat macro dPosX
   mov dPosX, edx
 endm
 
-mAddText macro textName, dPosX, dPosY
+maddText macro textName, dPosX, dPosY
   mov eax, dPosX
   mov ebx, dPosY
   add eax, 25
@@ -21,7 +21,7 @@ mAddText macro textName, dPosX, dPosY
   mov @stRectWord.bottom, ebx
   add eax, 105
   mov @stRectWord.right, eax
-  invoke DrawText, @hDc, addr textName, -1, addr @stRectWord, DT_SINGLELINE or DT_CENTER or DT_VCENTER
+  invoke DrawText, @hDc, textName, -1, addr @stRectWord, DT_SINGLELINE or DT_CENTER or DT_VCENTER
 endm
 
 mAddFrog macro dPosX, dPosY
@@ -36,20 +36,24 @@ mAddFrog macro dPosX, dPosY
   invoke TransparentBlt, @hDc, @dPosFrog, ebx, 75, 55, @hDcFrog, 0, 0, 75, 55, 0ffffffh
 endm
 
+Leaf struct
+  x dd ?
+  y dd ?
+  wordIndex dd ?
+Leaf ends
 
 .data
-HeroPosX dd 0
-HeroPosY dd 0
-HeroHealth dd 1000
-HeroAttack dd 100
-HeroDefence dd 100
-HeroMoney dd 0
-dPosX1 dd -80
-dPosX2 dd -80
-dPosX3 dd -80
-dPosY1 dd 415
-dPosY2 dd 325
-dPosY3 dd 235
+leaf1 Leaf {-80, 415, 0}
+leaf2 Leaf {-80, 325, 1}
+leaf3 Leaf {-80, 235, 2}
+
+matched dd 0
+
+word1 db 'too young', 0
+word2 db 'too simple', 0
+word3 db 'sometimes', 0
+word4 db 'naive', 0
+
 status dd 0
 mov_width dd 810+156
 .data?
@@ -71,7 +75,6 @@ szCaptionMain db '激流勇进', 0
 szHeroHealth db '生命', 0
 szHeroAttack db '攻击力', 0
 szText db 'sometimes naive', 0
-words db 'a','b','c','d','e',0
 
 .code
 
@@ -81,8 +84,8 @@ ProcTimer proc hWnd, uMsg, idEvent, dwTime
   local @stRect: RECT
   .if status != 0
 
-  mov eax, dPosX1
-  mov ebx, dPosY1
+  mov eax, leaf1.x
+  mov ebx, leaf1.y
   mov @stRect.left, 0
   add eax, 160
   mov @stRect.right, 810
@@ -90,31 +93,31 @@ ProcTimer proc hWnd, uMsg, idEvent, dwTime
   mov @stRect.top, 0
   add ebx, 92
   mov @stRect.bottom, ebx
-  add dPosX1,8
-  add dPosX2,9
-  add dPosX3,10
+  add leaf1.x,8
+  add leaf2.x,9
+  add leaf3.x,10
 
-  push dPosX1
-  mRepeat dPosX1
+  push leaf1.x
+  mRepeat leaf1.x
   pop ecx
-  .if ecx < dPosX1 && status==2
+  .if ecx < leaf1.x && status==2
     sub status,1
     invoke GetClientRect, hWnd, addr @stRect
     invoke InvalidateRect, hWnd, addr @stRect, TRUE
     invoke UpdateWindow, hWnd
   .endif
 
-  push dPosX2
-  mRepeat dPosX2
+  push leaf2.x
+  mRepeat leaf2.x
   pop ecx
-  .if ecx < dPosX2 && status==3
+  .if ecx < leaf2.x && status==3
     sub status,1
   .endif
 
-  push dPosX3
-  mRepeat dPosX3
+  push leaf3.x
+  mRepeat leaf3.x
   pop ecx
-  .if ecx < dPosX3 && status==4
+  .if ecx < leaf3.x && status==4
     sub status,1
   .endif
 
@@ -128,7 +131,40 @@ ProcTimer endp
 ProcChar proc hWnd, uMsg, wParam, lParam
     local @stRect: RECT
 
+    .if status == 1
+      lea ebx, word1
+      mov edx, lengthof word1
+      dec edx
+    .elseif status == 2
+      lea ebx, word2
+      mov edx, lengthof word2
+      dec edx
+    .elseif status == 3
+      lea ebx, word3
+      mov edx, lengthof word3
+      dec edx
+    .elseif status == 4
+      lea ebx, word4
+      mov edx, lengthof word4
+      dec edx
+    .endif
 
+    mov ecx, matched
+    mov eax, 0
+    mov al, [ebx + ecx]
+    .if eax == wParam
+      PrintHex eax
+      PrintHex wParam
+      PrintHex edx
+      inc ecx
+      .if ecx == edx 
+        inc status
+        invoke GetClientRect, hWnd, addr @stRect
+        invoke InvalidateRect, hWnd, addr @stRect, TRUE
+        invoke UpdateWindow, hWnd
+      .endif
+      mov matched, ecx
+    .endif
 
    .if wParam == 032H
       mov eax, hBitmapBG1
@@ -225,13 +261,15 @@ _ProcWinMain proc uses ebx edi esi hWnd, uMsg, wParam, lParam
       invoke CreateCompatibleDC, @hDc
       mov @hDcLeaf, eax ; Leaf DC
       invoke SelectObject, @hDcLeaf, hBitmapLeaf
-      invoke TransparentBlt, @hDc, dPosX1, dPosY1, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      invoke TransparentBlt, @hDc, dPosX2, dPosY2, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      invoke TransparentBlt, @hDc, dPosX3, dPosY3, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      invoke TransparentBlt, @hDc, leaf1.x, leaf1.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      invoke TransparentBlt, @hDc, leaf2.x, leaf2.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      invoke TransparentBlt, @hDc, leaf3.x, leaf3.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
 
-      mAddText words[1], dPosX1, dPosY1
-      mAddText words[2], dPosX2, dPosY2
-      mAddText szText, dPosX3, dPosY3
+
+      maddText addr word1, leaf1.x, leaf1.y
+      maddText addr word2, leaf2.x, leaf2.y
+      maddText addr word3, leaf3.x, leaf3.y
+
 
       invoke DeleteDC, @hDcLeaf
       invoke DeleteDC, @hDcFrog
@@ -246,14 +284,14 @@ _ProcWinMain proc uses ebx edi esi hWnd, uMsg, wParam, lParam
       invoke CreateCompatibleDC, @hDc
       mov @hDcLeaf, eax ; Leaf DC
       invoke SelectObject, @hDcLeaf, hBitmapLeaf
-      invoke TransparentBlt, @hDc, dPosX1, dPosY1, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      invoke TransparentBlt, @hDc, dPosX2, dPosY2, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      invoke TransparentBlt, @hDc, dPosX3, dPosY3, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      mAddText szText, dPosX1, dPosY1
-      mAddText szText, dPosX2, dPosY2
-      mAddText szText, dPosX3, dPosY3      
+      invoke TransparentBlt, @hDc, leaf1.x, leaf1.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      invoke TransparentBlt, @hDc, leaf2.x, leaf2.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      invoke TransparentBlt, @hDc, leaf3.x, leaf3.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      maddText addr szText, leaf1.x, leaf1.y
+      maddText addr szText, leaf2.x, leaf2.y
+      maddText addr szText, leaf3.x, leaf3.y      
 
-      mAddFrog dPosX1, dPosY1
+      mAddFrog leaf1.x, leaf1.y
 
       invoke DeleteDC, @hDcLeaf
 
@@ -265,14 +303,14 @@ _ProcWinMain proc uses ebx edi esi hWnd, uMsg, wParam, lParam
       invoke CreateCompatibleDC, @hDc
       mov @hDcLeaf, eax ; Leaf DC
       invoke SelectObject, @hDcLeaf, hBitmapLeaf
-      invoke TransparentBlt, @hDc, dPosX1, dPosY1, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      invoke TransparentBlt, @hDc, dPosX2, dPosY2, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      invoke TransparentBlt, @hDc, dPosX3, dPosY3, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      mAddText szText, dPosX1, dPosY1
-      mAddText szText, dPosX2, dPosY2
-      mAddText szText, dPosX3, dPosY3      
+      invoke TransparentBlt, @hDc, leaf1.x, leaf1.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      invoke TransparentBlt, @hDc, leaf2.x, leaf2.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      invoke TransparentBlt, @hDc, leaf3.x, leaf3.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      maddText addr szText, leaf1.x, leaf1.y
+      maddText addr szText, leaf2.x, leaf2.y
+      maddText addr szText, leaf3.x, leaf3.y      
 
-      mAddFrog dPosX2, dPosY2
+      mAddFrog leaf2.x, leaf2.y
 
       invoke DeleteDC, @hDcLeaf
       invoke DeleteDC, @hDcFrog
@@ -283,30 +321,32 @@ _ProcWinMain proc uses ebx edi esi hWnd, uMsg, wParam, lParam
       invoke CreateCompatibleDC, @hDc
       mov @hDcLeaf, eax ; Leaf DC
       invoke SelectObject, @hDcLeaf, hBitmapLeaf
-      invoke TransparentBlt, @hDc, dPosX1, dPosY1, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      invoke TransparentBlt, @hDc, dPosX2, dPosY2, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      invoke TransparentBlt, @hDc, dPosX3, dPosY3, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      mAddText szText, dPosX1, dPosY1
-      mAddText szText, dPosX2, dPosY2
-      mAddText szText, dPosX3, dPosY3      
+      invoke TransparentBlt, @hDc, leaf1.x, leaf1.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      invoke TransparentBlt, @hDc, leaf2.x, leaf2.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      invoke TransparentBlt, @hDc, leaf3.x, leaf3.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      maddText addr szText, leaf1.x, leaf1.y
+      maddText addr szText, leaf2.x, leaf2.y
+      maddText addr szText, leaf3.x, leaf3.y      
 
-      mAddFrog dPosX3, dPosY3
+      mAddFrog leaf3.x, leaf3.y
 
       invoke DeleteDC, @hDcLeaf
       invoke DeleteDC, @hDcFrog
     .endif
 
       .if status == 5
+        mov eax, hBitmapBG3
+        mov hBitmapBG, eax
       ;add leaf
       invoke CreateCompatibleDC, @hDc
       mov @hDcLeaf, eax ; Leaf DC
       invoke SelectObject, @hDcLeaf, hBitmapLeaf
-      invoke TransparentBlt, @hDc, dPosX1, dPosY1, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      invoke TransparentBlt, @hDc, dPosX2, dPosY2, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      invoke TransparentBlt, @hDc, dPosX3, dPosY3, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      mAddText szText, dPosX1, dPosY1
-      mAddText szText, dPosX2, dPosY2
-      mAddText szText, dPosX3, dPosY3      
+      invoke TransparentBlt, @hDc, leaf1.x, leaf1.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      invoke TransparentBlt, @hDc, leaf2.x, leaf2.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      invoke TransparentBlt, @hDc, leaf3.x, leaf3.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
+      maddText addr  szText, leaf1.x, leaf1.y
+      maddText addr  szText, leaf2.x, leaf2.y
+      maddText addr  szText, leaf3.x, leaf3.y      
 
       invoke DeleteDC, @hDcLeaf
       invoke DeleteDC, @hDcFrog
