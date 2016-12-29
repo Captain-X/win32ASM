@@ -15,9 +15,9 @@ maddText macro textName, dPosX, dPosY
   mov ebx, dPosY
   add eax, 25
   mov @stRectWord.left, eax
-  add ebx, 33
+  add ebx, 30
   mov @stRectWord.top, ebx
-  add ebx, 10
+  add ebx, 18
   mov @stRectWord.bottom, ebx
   add eax, 105
   mov @stRectWord.right, eax
@@ -49,12 +49,34 @@ leaf3 Leaf {-80, 235, 2}
 
 matched dd 0
 
-word1 db 'too young', 0
-word2 db 'too simple', 0
+word1 db 'young', 0
+word2 db 'simple', 0
 word3 db 'sometimes', 0
 word4 db 'naive', 0
 
+
+word11 db 'extrn', 0
+word21 db 'public', 0
+word31 db 'mov', 0
+word41 db 'add', 0
+word12 db 'int', 0
+word22 db 'out', 0
+word32 db 'offset', 0
+word42 db 'jmp', 0
+word13 db 'cmp', 0
+word23 db 'jnz', 0
+word33 db 'rep', 0
+word43 db 'rol', 0
+
+time dd  0
+timeStr  db  '00:00:00',0
+levelStr  db  'level:1',0
+sec  dd 0
+min  dd 0
+hour dd 0
 status dd 0
+speed dd 4
+level dd 1
 mov_width dd 810+156
 .data?
 hInstance dd  ?
@@ -63,10 +85,20 @@ hBitmapHero dd ?
 
 hIcon dd ?
 hMenu dd ?
+
+;word1 dd ?
+;word2 dd ?
+;word3 dd ?
+;word4 dd ?
+
 .const
+num10 dd 10
+num60 dd 60
+num3600 dd 3600
 szIcon db 'images\\icon.ico', 0
 szBitmapTile db 'images\\tile.bmp', 0
 szBitmapHero db 'images\\hero.bmp', 0
+bgm db 'images\\BG.wav',0
 
 szClassName db 'MainWindow', 0
 szMenuNewGame db 'ÐÂÓÎÏ·(&N)', 0
@@ -77,25 +109,99 @@ szHeroAttack db '¹¥»÷Á¦', 0
 szText db 'sometimes naive', 0
 
 .code
-
+invoke PlaySound, addr bgm, NULL, SND_FILENAME or SND_ASYNC
 
 
 ProcTimer proc hWnd, uMsg, idEvent, dwTime
   local @stRect: RECT
   .if status != 0
+  .if status !=5
+    inc time  
+  .endif
+
+  sub edx, edx
+  mov eax, time
+  div num10
+  sub edx, edx
+  div num3600
+  mov hour, eax
+  mov eax, edx
+  sub edx, edx
+  div num60
+  mov min, eax
+  mov sec, edx
+  ;PrintHex hour
+  ;PrintHex min
+  ;PrintHex sec
+
+  sub edx, edx
+  mov eax, hour
+  div num10
+  add eax, 30H
+  add edx, 30H
+  mov timeStr[0], al
+  mov timeStr[1], dl
+
+  sub edx, edx
+  mov eax, min
+  div num10
+  add eax, 30H
+  add edx, 30H
+  mov timeStr[3], al
+  mov timeStr[4], dl
+
+  sub edx, edx
+  mov eax, sec
+  div num10
+  add eax, 30H
+  add edx, 30H
+  mov timeStr[6], al
+  mov timeStr[7], dl
 
   mov eax, leaf1.x
   mov ebx, leaf1.y
-  mov @stRect.left, 0
+  mov @stRect.left, eax
   add eax, 160
-  mov @stRect.right, 810
+  mov @stRect.right, eax
   sub ebx, 25
-  mov @stRect.top, 0
+  mov @stRect.top, ebx
   add ebx, 92
   mov @stRect.bottom, ebx
-  add leaf1.x,8
-  add leaf2.x,9
-  add leaf3.x,10
+  invoke InvalidateRect, hWnd, addr @stRect, TRUE
+  invoke UpdateWindow, hWnd
+
+  mov eax, leaf2.x
+  mov ebx, leaf2.y
+  mov @stRect.left, eax
+  add eax, 150
+  mov @stRect.right, eax
+  sub ebx, 25
+  mov @stRect.top, ebx
+  add ebx, 92
+  mov @stRect.bottom, ebx
+  invoke InvalidateRect, hWnd, addr @stRect, TRUE
+  invoke UpdateWindow, hWnd
+
+  mov eax, leaf3.x
+  mov ebx, leaf3.y
+  mov @stRect.left, eax
+  add eax, 150
+  mov @stRect.right, eax
+  sub ebx, 25
+  mov @stRect.top, ebx
+  add ebx, 92
+  mov @stRect.bottom, ebx
+  invoke InvalidateRect, hWnd, addr @stRect, TRUE
+  invoke UpdateWindow, hWnd
+
+
+
+  mov edx, speed
+  add leaf1.x,edx
+  inc edx
+  add leaf2.x,edx
+  inc edx
+  add leaf3.x,edx
 
   push leaf1.x
   mRepeat leaf1.x
@@ -105,6 +211,8 @@ ProcTimer proc hWnd, uMsg, idEvent, dwTime
     invoke GetClientRect, hWnd, addr @stRect
     invoke InvalidateRect, hWnd, addr @stRect, TRUE
     invoke UpdateWindow, hWnd
+ ;   lea edx, word11
+ ;   mov word1, edx
   .endif
 
   push leaf2.x
@@ -120,10 +228,8 @@ ProcTimer proc hWnd, uMsg, idEvent, dwTime
   .if ecx < leaf3.x && status==4
     sub status,1
   .endif
+.endif
 
-  invoke InvalidateRect, hWnd, addr @stRect, TRUE
-  invoke UpdateWindow, hWnd
-  .endif
 
 ProcTimer endp
 
@@ -147,15 +253,17 @@ ProcChar proc hWnd, uMsg, wParam, lParam
       lea ebx, word4
       mov edx, lengthof word4
       dec edx
+    .else
+      ret
     .endif
 
     mov ecx, matched
     mov eax, 0
     mov al, [ebx + ecx]
     .if eax == wParam
-      PrintHex eax
-      PrintHex wParam
-      PrintHex edx
+      ;PrintHex eax
+      ;PrintHex wParam
+      ;PrintHex edx
       inc ecx
       .if ecx == edx 
         inc status
@@ -165,6 +273,9 @@ ProcChar proc hWnd, uMsg, wParam, lParam
       .endif
       mov matched, ecx
     .endif
+    invoke GetClientRect, hWnd, addr @stRect
+    invoke InvalidateRect, hWnd, addr @stRect, TRUE
+    invoke UpdateWindow, hWnd
 
    .if wParam == 032H
       mov eax, hBitmapBG1
@@ -201,11 +312,30 @@ ProcKeydown proc hWnd, uMsg, wParam, lParam
   .if wParam >= 041H && wParam <= 05AH
 
   .endif
-  .if wParam == VK_RETURN
-    mov eax, hBitmapBG2
-    mov hBitmapBG, eax
-    mov status,1
-  .endif
+
+;.if wParam == VK_RETURN && (status==0 || status==5)
+;    mov eax, hBitmapBG2
+;    mov hBitmapBG, eax
+;    .if status==5
+;     mov time,0
+;   .endif 
+;   mov status,1
+; .endif
+
+.if wParam == VK_RETURN && status==0
+   mov eax, hBitmapBG2
+   mov hBitmapBG, eax
+   mov status,1   
+ .endif
+
+.if wParam == VK_RETURN && status==5
+   mov eax, hBitmapBG2
+   mov hBitmapBG, eax
+   mov time,0
+   mov status,1
+   add speed,2
+   inc levelStr[6]   
+ .endif
 
   .if wParam == VK_DELETE
     mov eax, hBitmapBG1
@@ -251,6 +381,29 @@ _ProcWinMain proc uses ebx edi esi hWnd, uMsg, wParam, lParam
     invoke DeleteDC, @hDcBG
     mov eax, hBitmapBG
 
+    mov eax, 680
+    mov ebx, 90
+    add eax, 25
+    mov @stRectWord.left, eax
+    add ebx, 33
+    mov @stRectWord.top, ebx
+    add ebx, 10
+    mov @stRectWord.bottom, ebx
+    add eax, 105
+    mov @stRectWord.right, eax
+    invoke DrawText, @hDc, addr timeStr, -1, addr @stRectWord, DT_SINGLELINE or DT_CENTER or DT_VCENTER
+
+    mov eax, 610
+    mov ebx, 90
+    add eax, 25
+    mov @stRectWord.left, eax
+    add ebx, 33
+    mov @stRectWord.top, ebx
+    add ebx, 10
+    mov @stRectWord.bottom, ebx
+    add eax, 105
+    mov @stRectWord.right, eax
+    invoke DrawText, @hDc, addr levelStr, -1, addr @stRectWord, DT_SINGLELINE or DT_CENTER or DT_VCENTER
     
     
     .if status == 1
@@ -266,9 +419,15 @@ _ProcWinMain proc uses ebx edi esi hWnd, uMsg, wParam, lParam
       invoke TransparentBlt, @hDc, leaf3.x, leaf3.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
 
 
-      maddText addr word1, leaf1.x, leaf1.y
-      maddText addr word2, leaf2.x, leaf2.y
-      maddText addr word3, leaf3.x, leaf3.y
+      maddText  addr word1, leaf1.x, leaf1.y
+      maddText  addr word2, leaf2.x, leaf2.y
+      maddText  addr word3, leaf3.x, leaf3.y
+
+      mov @stRectWord.left, 450
+      mov @stRectWord.top, 133
+      mov @stRectWord.bottom, 150
+      mov @stRectWord.right, 555
+      invoke DrawText, @hDc, addr word4, -1, addr @stRectWord, DT_SINGLELINE or DT_CENTER or DT_VCENTER
 
 
       invoke DeleteDC, @hDcLeaf
@@ -287,9 +446,15 @@ _ProcWinMain proc uses ebx edi esi hWnd, uMsg, wParam, lParam
       invoke TransparentBlt, @hDc, leaf1.x, leaf1.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
       invoke TransparentBlt, @hDc, leaf2.x, leaf2.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
       invoke TransparentBlt, @hDc, leaf3.x, leaf3.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      maddText addr szText, leaf1.x, leaf1.y
-      maddText addr szText, leaf2.x, leaf2.y
-      maddText addr szText, leaf3.x, leaf3.y      
+      maddText addr word1, leaf1.x, leaf1.y
+      maddText addr word2, leaf2.x, leaf2.y
+      maddText addr word3, leaf3.x, leaf3.y
+
+      mov @stRectWord.left, 450
+      mov @stRectWord.top, 133
+      mov @stRectWord.bottom, 150
+      mov @stRectWord.right, 555
+      invoke DrawText, @hDc, addr word4, -1, addr @stRectWord, DT_SINGLELINE or DT_CENTER or DT_VCENTER    
 
       mAddFrog leaf1.x, leaf1.y
 
@@ -306,9 +471,15 @@ _ProcWinMain proc uses ebx edi esi hWnd, uMsg, wParam, lParam
       invoke TransparentBlt, @hDc, leaf1.x, leaf1.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
       invoke TransparentBlt, @hDc, leaf2.x, leaf2.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
       invoke TransparentBlt, @hDc, leaf3.x, leaf3.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      maddText addr szText, leaf1.x, leaf1.y
-      maddText addr szText, leaf2.x, leaf2.y
-      maddText addr szText, leaf3.x, leaf3.y      
+      maddText addr word1, leaf1.x, leaf1.y
+      maddText addr word2, leaf2.x, leaf2.y
+      maddText addr word3, leaf3.x, leaf3.y
+
+      mov @stRectWord.left, 450
+      mov @stRectWord.top, 133
+      mov @stRectWord.bottom, 150
+      mov @stRectWord.right, 555
+      invoke DrawText, @hDc, addr word4, -1, addr @stRectWord, DT_SINGLELINE or DT_CENTER or DT_VCENTER     
 
       mAddFrog leaf2.x, leaf2.y
 
@@ -324,9 +495,15 @@ _ProcWinMain proc uses ebx edi esi hWnd, uMsg, wParam, lParam
       invoke TransparentBlt, @hDc, leaf1.x, leaf1.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
       invoke TransparentBlt, @hDc, leaf2.x, leaf2.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
       invoke TransparentBlt, @hDc, leaf3.x, leaf3.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      maddText addr szText, leaf1.x, leaf1.y
-      maddText addr szText, leaf2.x, leaf2.y
-      maddText addr szText, leaf3.x, leaf3.y      
+      maddText addr word1, leaf1.x, leaf1.y
+      maddText addr word2, leaf2.x, leaf2.y
+      maddText addr word3, leaf3.x, leaf3.y
+
+      mov @stRectWord.left, 450
+      mov @stRectWord.top, 133
+      mov @stRectWord.bottom, 150
+      mov @stRectWord.right, 555
+      invoke DrawText, @hDc, addr word4, -1, addr @stRectWord, DT_SINGLELINE or DT_CENTER or DT_VCENTER      
 
       mAddFrog leaf3.x, leaf3.y
 
@@ -344,9 +521,15 @@ _ProcWinMain proc uses ebx edi esi hWnd, uMsg, wParam, lParam
       invoke TransparentBlt, @hDc, leaf1.x, leaf1.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
       invoke TransparentBlt, @hDc, leaf2.x, leaf2.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
       invoke TransparentBlt, @hDc, leaf3.x, leaf3.y, 156, 67, @hDcLeaf, 0, 0, 156, 67, 0ffffffh
-      maddText addr  szText, leaf1.x, leaf1.y
-      maddText addr  szText, leaf2.x, leaf2.y
-      maddText addr  szText, leaf3.x, leaf3.y      
+      maddText addr word1, leaf1.x, leaf1.y
+      maddText addr word2, leaf2.x, leaf2.y
+      maddText addr word3, leaf3.x, leaf3.y
+
+      mov @stRectWord.left, 450
+      mov @stRectWord.top, 133
+      mov @stRectWord.bottom, 150
+      mov @stRectWord.right, 555
+      invoke DrawText, @hDc, addr word4, -1, addr @stRectWord, DT_SINGLELINE or DT_CENTER or DT_VCENTER     
 
       invoke DeleteDC, @hDcLeaf
       invoke DeleteDC, @hDcFrog

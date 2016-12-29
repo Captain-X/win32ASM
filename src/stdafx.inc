@@ -3,6 +3,8 @@
 option casemap: none
 
 include windows.inc
+;include mmsystem.inc
+
 include gdi32.inc
 includelib gdi32.lib
 include msimg32.inc
@@ -15,6 +17,8 @@ include masm32.inc
 includelib masm32.lib
 include debug.inc
 includelib debug.lib
+include winmm.inc
+includelib winmm.lib
 
 BLOCK_SIZE equ 20h
 MAP_SIZE equ 0Dh
